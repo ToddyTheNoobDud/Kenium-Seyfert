@@ -170,6 +170,8 @@ export default class Play extends Command {
         const { options, client, channelId, member } = ctx;
         const { query } = options as { query: string };
 
+        
+
         try {
             const me = await ctx.me();
             if (!me) {
@@ -180,6 +182,8 @@ export default class Play extends Command {
             if (!state || !state.channelId) {
                 return await this.sendErrorReply(ctx, "You must be in a voice channel to play music.");
             }
+
+            if ((await (await ctx.me())?.voice()).channelId !== (await ctx.member.voice()).channelId) return;
 
             await ctx.deferReply(true);
 
