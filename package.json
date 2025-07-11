@@ -1,0 +1,15 @@
+{
+	"dependencies": {
+		"aqualink": "2.6.4-r2",
+		"dotenv": "^17.2.0",
+		"seyfert": "^3.2.4",
+		"typescript": "^5.8.3",
+		"ws": "^8.18.3"
+	},
+	"scripts": {
+		"start": "tsx ./index.ts"
+	},
+	"devDependencies": {
+		"@types/node": "^24.0.13"
+	}
+}
