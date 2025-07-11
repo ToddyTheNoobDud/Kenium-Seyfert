@@ -178,27 +178,27 @@ export default class Play extends Command {
                 return await this.sendErrorReply(ctx, "I couldn't find myself in the guild.");
             }
 
-            const state = await member.voice().catch(() => null);
-            if (!state || !state.channelId) {
-                return await this.sendErrorReply(ctx, "You must be in a voice channel to play music.");
-            }
+            
+            const state = (await member.voice()).channelId;
 
-            if ((await (await ctx.me())?.voice()).channelId !== (await ctx.member.voice()).channelId) return;
+
+            if (( (await ctx.me())?.voice('cache')).channelId !== (ctx.member.voice('cache')).channelId) return;
+
 
             await ctx.deferReply(true);
 
             const player = client.aqua.createConnection({
                 guildId: ctx.guildId,
-                voiceChannel: state.channelId,
+                voiceChannel: state,
                 textChannel: channelId,
                 deaf: true,
                 defaultVolume: 65,
-            });
+            })
 
             const result = await client.aqua.resolve({
                 query: query,
                 requester: ctx.interaction.user,
-            });
+            })
 
             const embed = this.createPlayEmbed(result, player, query);
 
@@ -212,3 +212,4 @@ export default class Play extends Command {
         }
     }
 }
+
