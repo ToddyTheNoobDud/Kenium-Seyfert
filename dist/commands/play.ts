@@ -125,7 +125,8 @@ const options = {
 @Options(options)
 export default class Play extends Command {
     private createPlayEmbed(result: any, player: any, query: string): Embed {
-        const embed = new Embed().setColor(EMBED_COLOR).setTimestamp();
+        
+        const embed = new Embed().setColor(EMBED_COLOR).setTimestamp()
 
         switch (result.loadType) {
             case "track":
@@ -180,7 +181,7 @@ export default class Play extends Command {
                 return await this.sendErrorReply(ctx, "You must be in a voice channel to play music.");
             }
 
-            await ctx.deferReply();
+            await ctx.deferReply(true);
 
             const player = client.aqua.createConnection({
                 guildId: ctx.guildId,
