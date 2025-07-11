@@ -8,10 +8,6 @@ const { NODE_HOST, NODE_PASSWORD, NODE_PORT, NODE_NAME } = process.env;
 const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
 
-declare module 'seyfert' {
-    interface UsingClient extends ParseClient<Client<true>> { }
-    interface UsingClient extends ParseClient<HttpClient> { }
-}
 
 
 const client = new Client();
@@ -30,6 +26,16 @@ const aqua = new Aqua(client, [{
     autoResume: true,
     leaveOnEnd: false,
 });
+
+declare module 'seyfert' {
+    interface UsingClient extends ParseClient<Client<true>>, ParseClient<HttpClient> {
+        aqua: InstanceType<typeof Aqua>;
+    }
+    interface UsingClient extends ParseClient<Client<true>> { }
+    interface UsingClient extends ParseClient<HttpClient> { }
+    interface UsingClient extends ParseClient<HttpClient> { }
+}
+
 
 
 Object.assign(client, {
