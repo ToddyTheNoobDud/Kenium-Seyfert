@@ -171,7 +171,6 @@ export default createEvent({
         name: 'interactionCreate',
     },
     run: async (interaction, client) => {
-        // Early return for non-button interactions
         if (!interaction.isButton()) return;
 
         // Validate interaction data
@@ -216,19 +215,19 @@ export default createEvent({
             return;
         }
 
-        // Execute action
         try {
-            const response = await handler(player, interaction);
-            
-            // Send response
+
+            setTimeout(async () => {
+             const response = await handler(player, interaction);
+
             await interaction.editOrReply(response);
+            }, 500);
             
-            // Update embed asynchronously to avoid blocking
-            setImmediate(() => {
-                updateNowPlayingEmbed(player, client).catch(error => {
-                    console.error(`Error updating embed after ${customId}:`, error);
-                });
-            });
+        
+            
+            setTimeout(() => {
+                updateNowPlayingEmbed(player, client);
+            }, 500);
             
         } catch (error) {
             console.error(`Error handling ${customId} action:`, error);
