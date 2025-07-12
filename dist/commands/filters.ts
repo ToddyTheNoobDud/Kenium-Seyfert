@@ -1,51 +1,46 @@
-import { Command, Declare, type CommandContext, Embed, Options, createStringOption} from "seyfert";
+import { Command, Declare, type CommandContext, Embed, Options, createStringOption, Middlewares } from "seyfert";
 
 @Options({
-    filters: createStringOption({
-        description: "Filter to apply",
-        required: true,
-        choices: [
-        { name: "8D", value: "8d" },
-        { name: "Equalizer", value: "equalizer" },
-        { name: "Karaoke", value: "karaoke" },
-        { name: "Timescale", value: "timescale" },
-        { name: "Tremolo", value: "tremolo" },
-        { name: "Vibrato", value: "vibrato" },
-        { name: "Rotation", value: "rotation" },
-        { name: "Distortion", value: "distortion" },
-        { name: "Channel Mix", value: "channelMix" },
-        { name: "Low Pass", value: "lowPass" },
-        { name: "Bassboost", value: "bassboost" },
-        { name: "Slowmode", value: "slowmode" },
-        { name: "Nightcore", value: "nightcore" },
-        { name: "Vaporwave", value: "vaporwave" },
-        { name: "Clear", value: "clear" },
-        ] as const
-    })
+  filters: createStringOption({
+    description: "Filter to apply",
+    required: true,
+    choices: [
+      { name: "8D", value: "8d" },
+      { name: "Equalizer", value: "equalizer" },
+      { name: "Karaoke", value: "karaoke" },
+      { name: "Timescale", value: "timescale" },
+      { name: "Tremolo", value: "tremolo" },
+      { name: "Vibrato", value: "vibrato" },
+      { name: "Rotation", value: "rotation" },
+      { name: "Distortion", value: "distortion" },
+      { name: "Channel Mix", value: "channelMix" },
+      { name: "Low Pass", value: "lowPass" },
+      { name: "Bassboost", value: "bassboost" },
+      { name: "Slowmode", value: "slowmode" },
+      { name: "Nightcore", value: "nightcore" },
+      { name: "Vaporwave", value: "vaporwave" },
+      { name: "Clear", value: "clear" },
+    ] as const
+  })
 })
 
 @Declare({
-    name: 'filters',
-    description: 'apply some filters'
+  name: 'filters',
+  description: 'apply some filters'
 })
-
+@Middlewares(['checkPlayer', 'checkVoice'])
 export default class filtersss extends Command {
-    public override async run(ctx: CommandContext) {
-        try {
-            const { client } = ctx;
+  public override async run(ctx: CommandContext) {
+    try {
+      const { client } = ctx;
 
-            const player = client.aqua.players.get(ctx.guildId!);
-            if (!player) return;
+      const player = client.aqua.players.get(ctx.guildId!);
 
-            let memberVoice = await ctx.member?.voice().catch(() => null);
-            let botvoice = await (await ctx.me()).voice().catch(() => null);
-            if (!memberVoice || botvoice && botvoice.channelId !== memberVoice.channelId) return;
+      const { filters } = ctx.options as { filters: string };
 
-            const { filters } = ctx.options as { filters: string };
+      player.filters.clearFilters();
 
-            player.filters.clearFilters();
-
-    switch (filters) {
+      switch (filters) {
         case "8d":
           player.filters.set8D(true);
           break;
@@ -98,9 +93,9 @@ export default class filtersss extends Command {
           });
       }
 
-            await ctx.editOrReply({ embeds: [new Embed().setDescription(`**Applied ${filters}**`).setColor(0)], flags: 64 });
-        } catch (error) {
-            if (error.code === 10065) return;
-        }
+      await ctx.editOrReply({ embeds: [new Embed().setDescription(`**Applied ${filters}**`).setColor(0)], flags: 64 });
+    } catch (error) {
+      if (error.code === 10065) return;
     }
+  }
 }

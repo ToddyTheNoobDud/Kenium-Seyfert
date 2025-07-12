@@ -1,4 +1,4 @@
-import { Command, Declare, type CommandContext, Embed, Options } from "seyfert";
+import { Command, Declare, type CommandContext, Embed, Options, Middlewares } from "seyfert";
 import { createIntegerOption } from "seyfert";
 
 @Options({
@@ -12,19 +12,13 @@ import { createIntegerOption } from "seyfert";
     name: 'seek',
     description: 'Seek to a specific position in the song',
 })
-
+@Middlewares(["checkPlayer", "checkVoice"])
 export default class Seek extends Command {
     async run(ctx: CommandContext) {
       try {
           const { client } = ctx;
 
         const player = client.aqua.players.get(ctx.guildId!);
-        if (!player) return;
-
-        let memberVoice = await ctx.member?.voice().catch(() => null);
-        let botvoice = await (await ctx.me()).voice().catch(() => null);
-        if (!memberVoice || botvoice && botvoice.channelId !== memberVoice.channelId) return;
-
         const { time } = ctx.options as { time: number };
 
         player.seek(time * 1000);

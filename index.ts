@@ -1,8 +1,7 @@
-import { Client, HttpClient, ParseClient, Container, LimitedMemoryAdapter, ParseMiddlewares, createEvent } from "seyfert";
-import { request } from 'node:https';
+import { Client, HttpClient, ParseClient, Container, LimitedMemoryAdapter, ParseMiddlewares } from "seyfert";
 import { createRequire } from "module";
 import { CooldownManager } from "@slipher/cooldown";
-import { middlewares } from "./dist/utils/middlewares";
+import { middlewares } from "./dist/middlewares/middlewares";
 
 import 'dotenv/config';
 

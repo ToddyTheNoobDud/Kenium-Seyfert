@@ -1,4 +1,4 @@
-import { Command, Declare, type CommandContext, Embed, createIntegerOption, Options} from 'seyfert'
+import { Command, Declare, type CommandContext, Embed, createIntegerOption, Options, Middlewares} from 'seyfert'
 
 @Options({
       volume: createIntegerOption({
@@ -13,7 +13,7 @@ import { Command, Declare, type CommandContext, Embed, createIntegerOption, Opti
     name: "volume",
     description: "Change the volume of the music player in the guild",
 })
-
+@Middlewares(["checkPlayer", "checkVoice"])
 export default class Volume extends Command {
     async run(ctx: CommandContext) {
 
@@ -25,9 +25,6 @@ export default class Volume extends Command {
 
 
         let player = ctx.client.aqua.players.get(ctx.guildId!);
-        if (!player)  return;
-
-
 
         if (volume < 0 || volume > 200) {
             return ctx.write({
@@ -39,9 +36,6 @@ export default class Volume extends Command {
             });
         }
         
-        let memberVoice = await ctx.member?.voice().catch(() => null);
-        let botvoice = await (await ctx.me()).voice().catch(() => null);
-        if (!memberVoice || botvoice && botvoice.channelId !== memberVoice.channelId) return;
 
         player.setVolume(volume);
 

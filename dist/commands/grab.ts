@@ -1,17 +1,16 @@
-import { Command, Declare, type CommandContext, Embed } from "seyfert";
+import { Command, Declare, type CommandContext, Embed, Middlewares  } from "seyfert";
 
 @Declare({
     name: 'grab',
     description: 'Grab current song and send to dms. (No VC needed)',
 })
-
+@Middlewares(['checkPlayer'])
 export default class Grab extends Command {
     public override async run(ctx: CommandContext) {
         try {
             const { client } = ctx;
 
             const player = client.aqua.players.get(ctx.guildId!);
-            if (!player) return;
 
             const song = player.current!;
             const trackEmbed = new Embed()

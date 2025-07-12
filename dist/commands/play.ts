@@ -5,6 +5,7 @@ import {
     type GuildCommandContext,
     Options,
     Embed,
+    Middlewares
 } from "seyfert";
 
 
@@ -51,7 +52,6 @@ const ERROR_MESSAGES = {
     UNSUPPORTED: "Unsupported content type.",
     getDifferentChannel: (id) => `I'm already in <#${id}>`
 };
-
 const userRecentSelections = new Map();
 const lastCleanupTime = { value: Date.now() };
 const URL_REGEX = /^https?:\/\/.+/i;
@@ -124,6 +124,7 @@ const options = {
     description: "Play a song by search query or URL.",
 })
 @Options(options)
+@Middlewares(["checkVoice"])
 export default class Play extends Command {
     private createPlayEmbed(result: any, player: any, query: string): Embed {
         
@@ -173,15 +174,6 @@ export default class Play extends Command {
 
             
             const state = (await member.voice());
-
-            if (!state) {
-                return await this.sendErrorReply(ctx, "You must be in a voice channel to use this command.");
-            }
-
-
-            let memberVoice = await ctx.member?.voice().catch(() => null);
-            let botvoice = await (await ctx.me()).voice().catch(() => null);
-            if (!memberVoice || botvoice && botvoice.channelId !== memberVoice.channelId) return;
 
 
             await ctx.deferReply(true);

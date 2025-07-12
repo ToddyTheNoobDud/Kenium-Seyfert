@@ -202,7 +202,6 @@ export default createEvent({
             return;
         }
 
-        // Get action handler
         const handler = actionHandlers[customId];
         if (!handler) {
             try {
@@ -220,7 +219,7 @@ export default createEvent({
             setTimeout(async () => {
              const response = await handler(player, interaction);
 
-            await interaction.editOrReply(response);
+             await interaction.followup(response);
             }, 500);
             
         

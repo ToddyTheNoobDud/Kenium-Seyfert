@@ -1,22 +1,17 @@
-import {Command, Declare, type CommandContext, Embed} from 'seyfert'
+import {Command, Declare, type CommandContext, Embed, Middlewares} from 'seyfert'
 
 @Declare({
     name: 'resume',
     description: 'resume the music',
 })
+
+@Middlewares(["checkPlayer", "checkVoice"])
 export default class resumecmds extends Command {
     public override async run(ctx: CommandContext): Promise<void> {
         try {
         const { client } = ctx;
 
         const player = client.aqua.players.get(ctx.guildId!);
-        if (!player) return;
-
-
-        let memberVoice = await ctx.member?.voice().catch(() => null);
-        let botvoice = await (await ctx.me()).voice().catch(() => null);
-        if (!memberVoice || botvoice && botvoice.channelId !== memberVoice.channelId) return;
-
 
         player.pause(false);
 
