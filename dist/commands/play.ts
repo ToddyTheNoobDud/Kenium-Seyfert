@@ -8,7 +8,7 @@ import {
     Middlewares
 } from "seyfert";
 
-
+const RECENT_SELECTIONS_MAX = 10;
 const MAX_AUTOCOMPLETE_RESULTS = 4;
 const MAX_RECENT_ITEMS = 4;
 const EMBED_COLOR = 0x000000;
@@ -44,6 +44,48 @@ async function combineResultsWithRecent(suggestions, recentSelections, query) {
     return [...filteredRecent.slice(0, MAX_RECENT_ITEMS), ...suggestions].slice(0, MAX_AUTOCOMPLETE_RESULTS + MAX_RECENT_ITEMS);
 }
 
+async function updateRecentSelections(userId, result) {
+    let userSelections = userRecentSelections.get(userId);
+
+    if (!userSelections) {
+        userSelections = { items: [], lastAccessed: Date.now() };
+        userRecentSelections.set(userId, userSelections);
+    } else {
+        userSelections.lastAccessed = Date.now();
+    }
+
+    if (["track", "search"].includes(result.loadType)) {
+        addTrackToRecentSelections(userSelections.items, result.tracks[0]);
+    } else if (result.loadType === "playlist") {
+        addPlaylistToRecentSelections(userSelections.items, result);
+    }
+
+    // Truncate if needed
+    if (userSelections.items.length > RECENT_SELECTIONS_MAX) {
+        userSelections.items.length = RECENT_SELECTIONS_MAX;
+    }
+}
+async function addTrackToRecentSelections(selections, track) {
+    // Remove existing entry if present
+    const existingIndex = selections.findIndex(item => item.uri === track.info.uri);
+    if (existingIndex !== -1) {
+        selections.splice(existingIndex, 1);
+    }
+
+    // Add to front
+    selections.unshift({
+        title: track.info.title,
+        uri: track.info.uri,
+        author: track.info.author
+    });
+}
+
+async function addPlaylistToRecentSelections(selections, result) {
+    selections.unshift({
+        title: `${result.playlistInfo.name} (Playlist)`,
+        uri: result.tracks[0].info.uri,
+    });
+}
 const ERROR_MESSAGES = {
     NO_VOICE: "You must be in a voice channel to use this command.",
     NO_TRACKS: "No tracks found for the given query.",
@@ -84,37 +126,34 @@ const options = {
             // @ts-ignore
             lastAutocomplete = now;
 
-          try {
-            if (!focused) {
-              const formattedRecent = await getFormattedRecentSelections(recentSelections); 
-              return interaction.respond(formattedRecent);
+            try {
+                if (!focused) {
+                    return interaction.respond(await getFormattedRecentSelections(recentSelections));
+                }
+
+                const result = await client.aqua.search(focused, userId);
+
+                if (!result?.length) {
+                    return interaction.respond(await getFormattedRecentSelections(recentSelections));
+                }
+
+                const suggestionsPromises = result
+                    .slice(0, MAX_AUTOCOMPLETE_RESULTS)
+                    .map(async track => ({
+                        name: await truncateTrackName(track?.info?.title, track?.info?.author),
+                        value: track?.info?.uri.slice(0, 97)
+                    }));
+
+                const suggestions = await Promise.all(suggestionsPromises);
+
+                const combined = await combineResultsWithRecent(suggestions, recentSelections, focused);
+
+                return interaction.respond(combined);
+            } catch (error) {
+                if (error.code === 10065) return;
+                console.error("Autocomplete error:", error);
+                return interaction.respond(await getFormattedRecentSelections(recentSelections));
             }
-
-            const result = await client.aqua.search(focused, userId);
-
-            if (!result?.length) {
-              const formattedRecent = await getFormattedRecentSelections(recentSelections); 
-              return interaction.respond(formattedRecent);
-            }
-
-            const suggestionsPromises = result
-              .slice(0, MAX_AUTOCOMPLETE_RESULTS)
-              .map(async track => ({
-                name: await truncateTrackName(track?.info?.title, track?.info?.author),
-                value: track?.info?.uri.slice(0, 97)
-              }));
-
-            const suggestions = await Promise.all(suggestionsPromises); 
-
-            const combined = await combineResultsWithRecent(suggestions, recentSelections, focused); 
-
-            return interaction.respond(combined);
-          } catch (error) {
-            if(error.code === 10065) return;
-            console.error("Autocomplete error:", error);
-            const formattedRecent = await getFormattedRecentSelections(recentSelections); 
-            return interaction.respond(formattedRecent);
-          }
         },
     }),
 };
@@ -127,7 +166,7 @@ const options = {
 @Middlewares(["checkVoice"])
 export default class Play extends Command {
     private createPlayEmbed(result: any, player: any, query: string): Embed {
-        
+
         const embed = new Embed().setColor(EMBED_COLOR).setTimestamp()
 
         switch (result.loadType) {
@@ -164,7 +203,7 @@ export default class Play extends Command {
         const { options, client, channelId, member } = ctx;
         const { query } = options as { query: string };
 
-        
+
 
         try {
             const me = await ctx.me();
@@ -172,7 +211,7 @@ export default class Play extends Command {
                 return await this.sendErrorReply(ctx, "I couldn't find myself in the guild.");
             }
 
-            
+
             const state = (await member.voice());
 
 
@@ -191,6 +230,12 @@ export default class Play extends Command {
                 requester: ctx.interaction.user,
             })
 
+            if (!result) {
+                return await this.sendErrorReply(ctx, "No results found.");
+            }
+
+            updateRecentSelections(ctx.interaction.user.id, result);
+
             const embed = this.createPlayEmbed(result, player, query);
 
             await ctx.editResponse({ embeds: [embed] });
@@ -199,7 +244,7 @@ export default class Play extends Command {
                 player.play();
             }
         } catch (error) {
-           if(error.code === 10065) return;
+            if (error.code === 10065) return;
         }
     }
 }
