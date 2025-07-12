@@ -64,24 +64,36 @@ Object.assign(client, {
     aqua,
 });
 
-const UPDATE_INTERVAL = 10000;
-const MAX_CACHE_SIZE = 50; 
-const VOICE_STATUS_TIMEOUT = 2000;
-const MAX_TITLE_LENGTH = 60;
+const UPDATE_INTERVAL = 5000; 
+const MAX_CACHE_SIZE = 20;
+const MAX_TITLE_LENGTH = 45; 
 
 const channelCache = new Map();
 const lastUpdates = new Map();
-const activeRequests = new Map();
 
-const PROGRESS_CHARS = ['', '█', '██', '███', '████', '█████', '██████', '███████', '████████', '█████████', '██████████', '███████████', '████████████'];
+const PROGRESS_CHARS = ['', '█', '██', '███', '████', '█████', '██████', '███████', '████████', '█████████', '██████████'];
 
+
+const timeFormatCache = new Map();
 const formatTime = (ms) => {
+    if (timeFormatCache.has(ms)) {
+        return timeFormatCache.get(ms);
+    }
+    
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
     
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    const formatted = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    
+
+    if (timeFormatCache.size > 100) {
+        timeFormatCache.clear();
+    }
+    
+    timeFormatCache.set(ms, formatted);
+    return formatted;
 };
 
 const getChannel = (id) => {
@@ -96,29 +108,28 @@ const getChannel = (id) => {
 };
 
 const canUpdate = (id) => {
-    const last = lastUpdates.get(id) || 0;
     const now = Date.now();
-    if (now - last < UPDATE_INTERVAL) return false;
+    const last = lastUpdates.get(id);
+    if (last && now - last < UPDATE_INTERVAL) return false;
     lastUpdates.set(id, now);
     return true;
 };
 
 const truncateText = (text, length = MAX_TITLE_LENGTH) => {
-    if (!text || text.length <= length) return text;
-    return `${text.slice(0, length - 3)}...`;
+    return text?.length > length ? `${text.slice(0, length - 3)}...` : text || '';
 };
 
 const createEmbed = (player, track) => {
     const { position, volume, loop } = player;
     const { title, uri, length } = track;
     
-    const progress = Math.min(12, Math.max(0, Math.round((position / length) * 12)));
-    const bar = `\`[${PROGRESS_CHARS[progress]}⦿${'▬'.repeat(12 - progress)}]\``;
+    const progress = Math.min(10, Math.max(0, Math.round((position / length) * 10)));
+    const bar = `\`[${PROGRESS_CHARS[progress]}⦿${'▬'.repeat(10 - progress)}]\``;
     
-    const volIcon = volume === 0 ? '🔇' : volume < 30 ? '🔈' : volume < 70 ? '🔉' : '🔊';
-    const loopIcon = { track: '🔂', queue: '🔁', none: '▶️' }[loop] || '▶️';
+    const volIcon = volume === 0 ? '🔇' : volume < 50 ? '🔈' : '🔊';
+    const loopIcon = loop === 'track' ? '🔂' : loop === 'queue' ? '🔁' : '▶️';
 
-    return new Container({
+ return new Container({
         components: [
             {
                 type: 9,
@@ -186,33 +197,32 @@ const createEmbed = (player, track) => {
 
 aqua.on("trackStart", async (player, track) => {
     const channel = getChannel(player.textChannel);
-    if (!channel) {
-        console.warn(`Channel not found for player: ${player.textChannel}`);
-        return;
-    }
+    if (!channel) return;
 
     try {
+        if (!canUpdate(player.guildId)) return;
+
         const embed = createEmbed(player, track);
         player.cachedEmbed = embed;
         
-        const [messageResult] = await Promise.allSettled([
-            channel.client.messages.write(channel.id, { 
-                components: [embed], 
-                flags: 4096 | 32768 
-            })
-        ]);
+        const message = await channel.client.messages.write(channel.id, { 
+            components: [embed], 
+            flags: 4096 | 32768 
+        }).catch(err => {
+            console.error("Failed to send message:", err.message);
+            return null;
+        });
 
-        if (messageResult.status === 'fulfilled') {
-            player.nowPlayingMessage = messageResult.value;
-        } else {
-            console.error("Failed to send now playing message:", messageResult.reason);
+        if (message) {
+            player.nowPlayingMessage = message;
         }
 
-        const voiceStatusText = `⭐ ${truncateText(track.info?.title || track.title, 40)} - Kenium 3.70`;
-        client.channels.setVoiceStatus(player.voiceChannel, voiceStatusText);
+        const voiceStatusText = `⭐ ${truncateText(track.info?.title || track.title, 30)}`;
+        client.channels.setVoiceStatus(player.voiceChannel, voiceStatusText)
+            .catch(err => console.error("Voice status error:", err.message));
         
     } catch (error) {
-        console.error("Track start error:", error);
+        console.error("Track start error:", error.message);
     }
 });
 
@@ -220,61 +230,52 @@ aqua.on("trackError", async (player, track, payload) => {
     const channel = getChannel(player.textChannel);
     if (!channel) return;
 
-    const errorMsg = payload.exception?.message || 'Unknown error';
-    const trackTitle = track.info?.title || track.title || 'Unknown track';
+    const errorMsg = payload.exception?.message || 'Playback failed';
+    const trackTitle = track.info?.title || track.title || 'Unknown';
     
-    console.error(`Track error: ${errorMsg}`);
-    
-    try {
-        await channel.client.messages.write(channel.id, { 
-            content: `❌ Error playing **${truncateText(trackTitle, 30)}**:\n\`${truncateText(errorMsg, 100)}\`` 
-        });
-    } catch (error) {
-        console.error("Failed to send error message:", error);
-    }
+    channel.client.messages.write(channel.id, { 
+        content: `❌ **${truncateText(trackTitle, 25)}**: ${truncateText(errorMsg, 50)}` 
+    }).catch(err => console.error("Error message failed:", err.message));
 });
 
-aqua.on("playerDestroy", (player) => {
-    const voiceChannel = player._lastVoiceChannel || player.voiceChannel;
-    if (voiceChannel) {
-         client.channels.setVoiceStatus(voiceChannel, null);
-    }
-    
-    player.nowPlayingMessage = null;
-    player.cachedEmbed = null;
-});
-
-aqua.on("queueEnd", (player) => {
+const cleanupPlayer = (player) => {
     if (player.voiceChannel) {
-         client.channels.setVoiceStatus(player.voiceChannel, null);
+        client.channels.setVoiceStatus(player.voiceChannel, null)
+            .catch(() => {});
     }
-    
     player.nowPlayingMessage = null;
     player.cachedEmbed = null;
-});
+};
+
+aqua.on("playerDestroy", cleanupPlayer);
+aqua.on("queueEnd", cleanupPlayer);
 
 aqua.on('nodeError', (node, error) => {
-    console.error(`Node error [${node.name}]:`, error);
+    client.logger.error(`Node [${node.name}] error: ${error.message}`);
 });
 
 aqua.on('nodeConnect', (node) => {
-    console.log(`Node connected: ${node.name}`);
+    client.logger.debug(`Node [${node.name}] connected`);
 });
 
-
 const gracefulShutdown = () => {
-    console.log('Shutting down gracefully...');
+    channelCache.clear();
+    lastUpdates.clear();
+    timeFormatCache.clear();
     process.exit(0);
 };
 
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
-client.start().then(() => {
-    console.log('Bot started successfully');
-    return client.uploadCommands({ cachePath: "./commands.json" });
+client.start().then(async () => {
+    try {
+        await client.uploadCommands({ cachePath: "./commands.json" });
+    } catch (error) {
+        console.error('Command upload failed:', error.message);
+    }
 }).catch(error => {
-    console.error('Failed to start bot:', error);
+    console.error('Bot startup failed:', error.message);
     process.exit(1);
 });
 
