@@ -220,13 +220,13 @@ export default createEvent({
              const response = await handler(player, interaction);
 
              await interaction.followup(response);
-            }, 500);
+            }, 36);
             
         
             
             setTimeout(() => {
                 updateNowPlayingEmbed(player, client);
-            }, 500);
+            }, 36);
             
         } catch (error) {
             console.error(`Error handling ${customId} action:`, error);
