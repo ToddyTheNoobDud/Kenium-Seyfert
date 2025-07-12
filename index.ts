@@ -104,44 +104,6 @@ const canUpdate = (id) => {
     return true;
 };
 
-const updateVoiceStatus = (id, status) => {
-    if (!id || !canUpdate(id)) return;
-
-    const requestKey = `${id}-${status}`;
-    if (activeRequests.has(requestKey)) return;
-    
-    activeRequests.set(requestKey, true);
-
-    const req = request({
-        host: 'discord.com',
-        path: `/api/v10/channels/${id}/voice-status`,
-        method: 'PUT',
-        headers: { 
-            'Authorization': `Bot ${token}`, 
-            'Content-Type': 'application/json'
-        },
-        timeout: VOICE_STATUS_TIMEOUT,
-    }, (res) => {
-        activeRequests.delete(requestKey);
-        if (res.statusCode !== 204) {
-            console.error(`Voice status failed: ${res.statusCode}`);
-        }
-    });
-
-    req.on('error', (err) => {
-        activeRequests.delete(requestKey);
-        console.error('Voice status request error:', err.message);
-    });
-    
-    req.on('timeout', () => {
-        activeRequests.delete(requestKey);
-        req.destroy();
-    });
-
-    req.write(JSON.stringify({ status }));
-    req.end();
-};
-
 const truncateText = (text, length = MAX_TITLE_LENGTH) => {
     if (!text || text.length <= length) return text;
     return `${text.slice(0, length - 3)}...`;
@@ -248,7 +210,7 @@ aqua.on("trackStart", async (player, track) => {
         }
 
         const voiceStatusText = `⭐ ${truncateText(track.info?.title || track.title, 40)} - Kenium 3.70`;
-        updateVoiceStatus(player.voiceChannel, voiceStatusText);
+        client.channels.setVoiceStatus(player.voiceChannel, voiceStatusText);
         
     } catch (error) {
         console.error("Track start error:", error);
@@ -276,7 +238,7 @@ aqua.on("trackError", async (player, track, payload) => {
 aqua.on("playerDestroy", (player) => {
     const voiceChannel = player._lastVoiceChannel || player.voiceChannel;
     if (voiceChannel) {
-        updateVoiceStatus(voiceChannel, null);
+         client.channels.setVoiceStatus(voiceChannel, null);
     }
     
     player.nowPlayingMessage = null;
@@ -285,7 +247,7 @@ aqua.on("playerDestroy", (player) => {
 
 aqua.on("queueEnd", (player) => {
     if (player.voiceChannel) {
-        updateVoiceStatus(player.voiceChannel, null);
+         client.channels.setVoiceStatus(player.voiceChannel, null);
     }
     
     player.nowPlayingMessage = null;
