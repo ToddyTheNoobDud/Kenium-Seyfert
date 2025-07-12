@@ -1,5 +1,6 @@
 {
 	"dependencies": {
+		"@slipher/cooldown": "^0.0.5",
 		"aqualink": "2.6.4-r2",
 		"dotenv": "^17.2.0",
 		"seyfert": "^3.2.4",
