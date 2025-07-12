@@ -1,0 +1,27 @@
+import { Declare, Command, type CommandContext, Embed} from 'seyfert'
+
+@Declare({
+    name: 'skip',
+    description: 'skip the music',
+})
+export default class skipCmds extends Command {
+    public override async run(ctx: CommandContext): Promise<void> {
+        try {
+        const { client } = ctx;
+
+        const player = client.aqua.players.get(ctx.guildId!);
+        if (!player) return;
+
+        let memberVoice = await ctx.member?.voice().catch(() => null);
+        let botvoice = await (await ctx.me()).voice().catch(() => null);
+        if (!memberVoice || botvoice && botvoice.channelId !== memberVoice.channelId) return;
+
+
+        player.skip();
+
+        await ctx.editOrReply({ embeds: [new Embed().setDescription('Skipped the song').setColor(0)] });
+        } catch (error) {
+           if(error.code === 10065) return;
+        }
+    }
+}

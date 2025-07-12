@@ -62,9 +62,9 @@ const options = {
         required: true,
         autocomplete: async (interaction: any) => {
             const { client } = interaction;
-            const voiceChannel = interaction.member.voice()
+            let memberVoice = await interaction.member?.voice().catch(() => null);
 
-            if (!voiceChannel) {
+            if (!memberVoice) {
                 return interaction.respond([]);
             }
 
@@ -110,6 +110,7 @@ const options = {
 
             return interaction.respond(combined);
           } catch (error) {
+            if(error.code === 10065) return;
             console.error("Autocomplete error:", error);
             const formattedRecent = await getFormattedRecentSelections(recentSelections); 
             return interaction.respond(formattedRecent);
@@ -158,14 +159,6 @@ export default class Play extends Command {
         await ctx.editResponse({ content });
     }
 
-    private async handleError(ctx: GuildCommandContext, error: Error): Promise<void> {
-        console.error("Play command error:", error);
-        const message = error.message === "Query timeout"
-            ? ERROR_MESSAGES.TIMEOUT
-            : ERROR_MESSAGES.GENERIC;
-
-        await ctx.editResponse({ content: message });
-    }
     public override async run(ctx: GuildCommandContext): Promise<void> {
         const { options, client, channelId, member } = ctx;
         const { query } = options as { query: string };
@@ -179,17 +172,23 @@ export default class Play extends Command {
             }
 
             
-            const state = (await member.voice()).channelId;
+            const state = (await member.voice());
+
+            if (!state) {
+                return await this.sendErrorReply(ctx, "You must be in a voice channel to use this command.");
+            }
 
 
-            if (( (await ctx.me())?.voice('cache')).channelId !== (ctx.member.voice('cache')).channelId) return;
+            let memberVoice = await ctx.member?.voice().catch(() => null);
+            let botvoice = await (await ctx.me()).voice().catch(() => null);
+            if (!memberVoice || botvoice && botvoice.channelId !== memberVoice.channelId) return;
 
 
             await ctx.deferReply(true);
 
             const player = client.aqua.createConnection({
                 guildId: ctx.guildId,
-                voiceChannel: state,
+                voiceChannel: state.channelId,
                 textChannel: channelId,
                 deaf: true,
                 defaultVolume: 65,
@@ -207,8 +206,8 @@ export default class Play extends Command {
             if (!player.playing && !player.paused && player.queue.size > 0) {
                 player.play();
             }
-        } catch (error: any) {
-            await this.handleError(ctx, error);
+        } catch (error) {
+           if(error.code === 10065) return;
         }
     }
 }
