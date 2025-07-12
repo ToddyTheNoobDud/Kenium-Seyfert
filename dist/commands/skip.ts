@@ -19,7 +19,7 @@ export default class skipCmds extends Command {
 
         player.skip();
 
-        await ctx.editOrReply({ embeds: [new Embed().setDescription('Skipped the song').setColor(0)] });
+        await ctx.editOrReply({ embeds: [new Embed().setDescription('Skipped the song').setColor(0)], flags: 64 });
         } catch (error) {
            if(error.code === 10065) return;
         }

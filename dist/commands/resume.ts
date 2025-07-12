@@ -20,7 +20,7 @@ export default class resumecmds extends Command {
 
         player.pause(false);
 
-        await ctx.editOrReply({ embeds: [new Embed().setDescription('Paused the song').setColor(0)] });
+        await ctx.editOrReply({ embeds: [new Embed().setDescription('Paused the song').setColor(0)], flags: 64 });
                 } catch (error) {
            if(error.code === 10065) return;
         }

@@ -45,7 +45,7 @@ export default class Volume extends Command {
 
         player.setVolume(volume);
 
-        await ctx.editOrReply({ embeds: [new Embed().setDescription('Changed the volume').setColor(0)] });
+        await ctx.editOrReply({ embeds: [new Embed().setDescription('Changed the volume').setColor(0)], flags: 64 });
         }
         catch (error) {
            if(error.code === 10065) return;

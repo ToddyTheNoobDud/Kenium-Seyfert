@@ -18,7 +18,7 @@ export default class pauseCmds extends Command {
 
         player.pause(true);
 
-        await ctx.editOrReply({ embeds: [new Embed().setDescription('Paused the song').setColor(0)] });
+        await ctx.editOrReply({ embeds: [new Embed().setDescription('Paused the song').setColor(0)], flags: 64 });
         } catch (error) {
            if(error.code === 10065) return;
         }
