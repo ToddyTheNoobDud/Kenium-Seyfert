@@ -6,7 +6,7 @@ const VOLUME_STEP = 10;
 const MAX_VOLUME = 100;
 const MIN_VOLUME = 0;
 
-const EXCLUDED_INTERACTIONS = /^(?:queue_|select_|platform_|lyrics_)/;
+const EXCLUDED_INTERACTIONS = /^(?:queue_|select_|platform_|lyrics_|add_more_|add_track_|edit_description_|remove_track_|playlist_(?:next|prev)_|(?:create|manage|view|shuffle|play)_playlist_)/;
 
 const VOLUME_ICONS = ['🔇', '🔈', '🔉', '🔊'];
 const LOOP_ICONS = { track: '🔂', queue: '🔁', none: '▶️' };
