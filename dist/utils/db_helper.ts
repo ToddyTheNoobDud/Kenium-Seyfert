@@ -1,4 +1,4 @@
-import { SimpleDB } from './simpleDB.js';
+import { SimpleDB } from './simpleDB';
 
 let dbInstance = null;
 let settingsCollectionInstance = null;
