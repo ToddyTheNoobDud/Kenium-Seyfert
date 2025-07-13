@@ -3,5 +3,6 @@
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true,
         "downlevelIteration": true,
+        "esModuleInterop": true
     }
 }
