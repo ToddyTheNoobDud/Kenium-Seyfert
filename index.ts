@@ -198,9 +198,6 @@ const createEmbed = (player, track) => {
 aqua.on("trackStart", async (player, track) => {
     const channel = getChannel(player.textChannel);
     if (!channel) return;
-
-    console.log("Track started:", track.info?.title || track.title);
-
     try {
         if (!canUpdate(player.guildId)) return;
 
@@ -251,6 +248,7 @@ const cleanupPlayer = (player) => {
 
 aqua.on("playerDestroy", cleanupPlayer);
 aqua.on("queueEnd", cleanupPlayer);
+aqua.on("trackEnd", cleanupPlayer);
 
 aqua.on('nodeError', (node, error) => {
     client.logger.error(`Node [${node.name}] error: ${error.message}`);

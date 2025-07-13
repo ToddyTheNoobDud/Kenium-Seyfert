@@ -13,5 +13,3 @@ handleEvent('rejectionHandled', promise => logEvent('Rejection Handled', `Promis
 handleEvent('beforeExit', code => logEvent('Before Exit', `Code: ${code}`));
 handleEvent('exit', code => logEvent('Exit', `Code: ${code}`));
 handleEvent('uncaughtExceptionMonitor', error => logEvent('Uncaught Exception Monitor', error));
-
-console.log('Error handler loaded');

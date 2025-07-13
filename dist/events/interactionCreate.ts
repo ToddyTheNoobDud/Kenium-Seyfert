@@ -6,29 +6,44 @@ const VOLUME_STEP = 10;
 const MAX_VOLUME = 100;
 const MIN_VOLUME = 0;
 
+const EXCLUDED_INTERACTIONS = /^(?:queue_|select_|platform_|lyrics_)/;
+
+const VOLUME_ICONS = ['🔇', '🔈', '🔉', '🔊'];
+const LOOP_ICONS = { track: '🔂', queue: '🔁', none: '▶️' };
+
 const formatTime = (ms) => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const totalSeconds = ms / 1000 | 0;
+    const hours = totalSeconds / 3600 | 0;
+    const minutes = (totalSeconds % 3600) / 60 | 0;
     const seconds = totalSeconds % 60;
     
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-const truncateText = (text, length = MAX_TITLE_LENGTH) => {
-    if (!text || text.length <= length) return text;
-    return `${text.slice(0, length - 3)}...`;
+
+const truncateText = (text, length = MAX_TITLE_LENGTH) => 
+    (!text || text.length <= length) ? text : `${text.slice(0, length - 3)}...`;
+
+const getVolumeIcon = (volume) => {
+    if (volume === 0) return VOLUME_ICONS[0];
+    if (volume < 30) return VOLUME_ICONS[1];
+    if (volume < 70) return VOLUME_ICONS[2];
+    return VOLUME_ICONS[3];
 };
+
 
 const createEmbed = (player, track, client) => {
     const { position, volume, loop } = player;
     const { title, uri, length } = track;
     
-    const progress = Math.min(12, Math.max(0, Math.round((position / length) * 12)));
-    const bar = `\`[${PROGRESS_CHARS[progress]}⦿${'▬'.repeat(12 - progress)}]\``;
+    const progress = Math.min(12, Math.max(0, (position / length * 12) | 0));
+    const progressBar = PROGRESS_CHARS[progress];
+    const remainingBar = '▬'.repeat(12 - progress);
+    const bar = `\`[${progressBar}⦿${remainingBar}]\``;
     
-    const volIcon = volume === 0 ? '🔇' : volume < 30 ? '🔈' : volume < 70 ? '🔉' : '🔊';
-    const loopIcon = { track: '🔂', queue: '🔁', none: '▶️' }[loop] || '▶️';
+    const volIcon = getVolumeIcon(volume);
+    const loopIcon = LOOP_ICONS[loop] || '▶️';
+    const requester = track.requester?.username || 'Unknown';
 
     return new Container({
         components: [
@@ -41,7 +56,7 @@ const createEmbed = (player, track, client) => {
                     },
                     {
                         type: 10,
-                        content: `\`${formatTime(position)}\` ${bar} \`${formatTime(length)}\`\n\n${volIcon} \`${volume}%\` ${loopIcon} \`${track.requester?.username || 'Unknown'}\``
+                        content: `\`${formatTime(position)}\` ${bar} \`${formatTime(length)}\`\n\n${volIcon} \`${volume}%\` ${loopIcon} \`${requester}\``
                     }
                 ],
                 accessory: {
@@ -97,15 +112,15 @@ const createEmbed = (player, track, client) => {
 };
 
 const actionHandlers = {
-    async volume_down(player, interaction) {
+    volume_down: (player) => {
         const newVolume = Math.max(MIN_VOLUME, player.volume - VOLUME_STEP);
         player.setVolume(newVolume);
-        return { content: `🔉 Volume set to ${newVolume}%` };
+        return `🔉 Volume set to ${newVolume}%`;
     },
 
-    async previous(player, interaction) {
+    previous: (player) => {
         if (!player.previous) {
-            return { content: '❌ No previous track available' };
+            return '❌ No previous track available';
         }
         
         if (player.current) {
@@ -115,39 +130,37 @@ const actionHandlers = {
         player.queue.unshift(player.previous);
         player.stop();
         
-        return { content: "⏮️ Playing the previous track." };
+        return "⏮️ Playing the previous track.";
     },
 
-    async resume(player, interaction) {
+    resume: async (player) => {
         await player.pause(false);
-        return { content: "▶️ Resumed playback." };
+        return "▶️ Resumed playback.";
     },
 
-    async pause(player, interaction) {
+    pause: async (player) => {
         await player.pause(true);
-        return { content: "⏸️ Paused playback." };
+        return "⏸️ Paused playback.";
     },
 
-    async skip(player, interaction) {
+    skip: async (player) => {
         if (player.queue.length === 0) {
-            return { content: "❌ No tracks in queue to skip to." };
+            return "❌ No tracks in queue to skip to.";
         }
         
         await player.skip();
-        return { content: "⏭️ Skipped to the next track." };
+        return "⏭️ Skipped to the next track.";
     },
 
-    async volume_up(player, interaction) {
+    volume_up: (player) => {
         const newVolume = Math.min(MAX_VOLUME, player.volume + VOLUME_STEP);
         player.setVolume(newVolume);
-        return { content: `🔊 Volume set to ${newVolume}%` };
+        return `🔊 Volume set to ${newVolume}%`;
     }
 };
 
 const updateNowPlayingEmbed = async (player, client) => {
-    if (!player.nowPlayingMessage || !player.current) {
-        return;
-    }
+    if (!player.nowPlayingMessage || !player.current) return;
 
     try {
         const updatedEmbed = createEmbed(player, player.current, client);
@@ -166,37 +179,39 @@ const updateNowPlayingEmbed = async (player, client) => {
     }
 };
 
+const sendErrorResponse = async (interaction, message) => {
+    try {
+        await interaction.editOrReply({ content: message });
+    } catch (error) {
+        console.error('Error sending response:', error);
+    }
+};
+
 export default createEvent({
     data: {
         name: 'interactionCreate',
     },
     run: async (interaction, client) => {
         if (!interaction.isButton()) return;
-
-        // Validate interaction data
+        if (EXCLUDED_INTERACTIONS.test(interaction.customId)) return;
+        
         const { customId, guildId } = interaction;
-        if (!customId || !guildId) {
-            console.warn('Invalid interaction data:', { customId, guildId });
-            return;
-        }
-
-        // Get player and validate
+        if (!customId || !guildId) return;
+        
         const player = client.aqua.players.get(guildId);
         if (!player || !player.current) {
             try {
                 await interaction.write({ 
                     content: "❌ There is no music playing right now.",
-                    flags: 64 // Ephemeral
+                    flags: 64
                 });
             } catch (error) {
                 console.error('Error sending no music response:', error);
             }
             return;
         }
-
-        // Defer reply early to prevent timeout
         try {
-            await interaction.deferReply(64); // Ephemeral
+            await interaction.deferReply(64);
         } catch (error) {
             console.error('Error deferring reply:', error);
             return;
@@ -204,40 +219,19 @@ export default createEvent({
 
         const handler = actionHandlers[customId];
         if (!handler) {
-            try {
-                await interaction.editOrReply({ 
-                    content: "❌ This button action is not recognized." 
-                });
-            } catch (error) {
-                console.error('Error sending unrecognized action response:', error);
-            }
+            await sendErrorResponse(interaction, "❌ This button action is not recognized.");
             return;
         }
 
         try {
-
-            setTimeout(async () => {
-             const response = await handler(player, interaction);
-
-             await interaction.followup(response);
-            }, 36);
+            const responseContent = await handler(player, interaction);
             
-        
-            
-            setTimeout(() => {
-                updateNowPlayingEmbed(player, client);
-            }, 36);
+            await interaction.followup({ content: responseContent });
+            await updateNowPlayingEmbed(player, client);
             
         } catch (error) {
             console.error(`Error handling ${customId} action:`, error);
-            
-            try {
-                await interaction.editOrReply({ 
-                    content: `❌ An error occurred while processing your request. Please try again.` 
-                });
-            } catch (replyError) {
-                console.error('Error sending error response:', replyError);
-            }
+            await sendErrorResponse(interaction, `❌ An error occurred while processing your request. Please try again.`);
         }
     },
 });
