@@ -64,7 +64,7 @@ Object.assign(client, {
     aqua,
 });
 
-const UPDATE_INTERVAL = 5000; 
+const UPDATE_INTERVAL = 500; 
 const MAX_CACHE_SIZE = 20;
 const MAX_TITLE_LENGTH = 45; 
 
@@ -199,6 +199,8 @@ aqua.on("trackStart", async (player, track) => {
     const channel = getChannel(player.textChannel);
     if (!channel) return;
 
+    console.log("Track started:", track.info?.title || track.title);
+
     try {
         if (!canUpdate(player.guildId)) return;
 
@@ -217,7 +219,7 @@ aqua.on("trackStart", async (player, track) => {
             player.nowPlayingMessage = message;
         }
 
-        const voiceStatusText = `⭐ ${truncateText(track.info?.title || track.title, 30)}`;
+        const voiceStatusText = `⭐ ${truncateText(track.info?.title || track.title, 30)} - Kenium 4.0.0`;
         client.channels.setVoiceStatus(player.voiceChannel, voiceStatusText)
             .catch(err => console.error("Voice status error:", err.message));
         
