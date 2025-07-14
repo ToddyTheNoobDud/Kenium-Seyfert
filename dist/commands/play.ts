@@ -23,16 +23,16 @@ async function truncateTrackName(title, author) {
     return combined.length > 100 ? combined.slice(0, 97) + "..." : combined;
 }
 
-
 async function getFormattedRecentSelections(recentSelections) {
+    const rankingEmojis = ['🥇', '🥈', '🥉'];
+    
     return (recentSelections || [])
         .slice(0, MAX_RECENT_ITEMS)
-        .map(item => ({
-            name: ` - Recently played: ${item.title?.slice(0, 97) || "Unknown"}`.slice(0, 97),
+        .map((item, index) => ({
+            name: `${rankingEmojis[index] || ''} | Recently played: ${item.title?.slice(0, 93) || "Unknown"}`.slice(0, 97),
             value: (item.uri || "").slice(0, 97)
         }));
 }
-
 async function combineResultsWithRecent(suggestions, recentSelections, query) {
     const queryLower = query.toLowerCase();
     const recentUris = new Set(suggestions.map(s => s.value));
