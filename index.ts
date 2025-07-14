@@ -13,10 +13,17 @@ const { Aqua } = require('aqualink');
 
 const client = new Client({
     presence: (shardId) => ({
+        gateway: {
+            properties: {
+                os: 'android',
+                browser: 'Discord Android',
+                device: 'android'
+            }
+        },
         // @ts-ignore
         status: "idle",
         activities: [{
-            name: "🌊 Kenium Code",
+            name: "⚡ Kenium 4.0.0 ⚡",
             type: 1,
             url: "https://www.youtube.com/watch?v=5etqxAG9tVg",
         }],
@@ -64,9 +71,9 @@ Object.assign(client, {
     aqua,
 });
 
-const UPDATE_INTERVAL = 500; 
+const UPDATE_INTERVAL = 500;
 const MAX_CACHE_SIZE = 20;
-const MAX_TITLE_LENGTH = 45; 
+const MAX_TITLE_LENGTH = 45;
 
 const channelCache = new Map();
 const lastUpdates = new Map();
@@ -79,19 +86,19 @@ const formatTime = (ms) => {
     if (timeFormatCache.has(ms)) {
         return timeFormatCache.get(ms);
     }
-    
+
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    
+
     const formatted = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    
+
 
     if (timeFormatCache.size > 100) {
         timeFormatCache.clear();
     }
-    
+
     timeFormatCache.set(ms, formatted);
     return formatted;
 };
@@ -122,14 +129,14 @@ const truncateText = (text, length = MAX_TITLE_LENGTH) => {
 const createEmbed = (player, track) => {
     const { position, volume, loop } = player;
     const { title, uri, length } = track;
-    
+
     const progress = Math.min(10, Math.max(0, Math.round((position / length) * 10)));
     const bar = `\`[${PROGRESS_CHARS[progress]}⦿${'▬'.repeat(10 - progress)}]\``;
-    
+
     const volIcon = volume === 0 ? '🔇' : volume < 50 ? '🔈' : '🔊';
     const loopIcon = loop === 'track' ? '🔂' : loop === 'queue' ? '🔁' : '▶️';
 
- return new Container({
+    return new Container({
         components: [
             {
                 type: 9,
@@ -203,10 +210,10 @@ aqua.on("trackStart", async (player, track) => {
 
         const embed = createEmbed(player, track);
         player.cachedEmbed = embed;
-        
-        const message = await channel.client.messages.write(channel.id, { 
-            components: [embed], 
-            flags: 4096 | 32768 
+
+        const message = await channel.client.messages.write(channel.id, {
+            components: [embed],
+            flags: 4096 | 32768
         }).catch(err => {
             console.error("Failed to send message:", err.message);
             return null;
@@ -219,7 +226,7 @@ aqua.on("trackStart", async (player, track) => {
         const voiceStatusText = `⭐ ${truncateText(track.info?.title || track.title, 30)} - Kenium 4.0.0`;
         client.channels.setVoiceStatus(player.voiceChannel, voiceStatusText)
             .catch(err => console.error("Voice status error:", err.message));
-        
+
     } catch (error) {
         console.error("Track start error:", error.message);
     }
@@ -231,16 +238,16 @@ aqua.on("trackError", async (player, track, payload) => {
 
     const errorMsg = payload.exception?.message || 'Playback failed';
     const trackTitle = track.info?.title || track.title || 'Unknown';
-    
-    channel.client.messages.write(channel.id, { 
-        content: `❌ **${truncateText(trackTitle, 25)}**: ${truncateText(errorMsg, 50)}` 
+
+    channel.client.messages.write(channel.id, {
+        content: `❌ **${truncateText(trackTitle, 25)}**: ${truncateText(errorMsg, 50)}`
     }).catch(err => console.error("Error message failed:", err.message));
 });
 
 const cleanupPlayer = (player) => {
     if (player.voiceChannel) {
         client.channels.setVoiceStatus(player.voiceChannel, null)
-            .catch(() => {});
+            .catch(() => { });
     }
     player.nowPlayingMessage = null;
     player.cachedEmbed = null;
