@@ -1,7 +1,7 @@
 import { createEvent, Embed } from "seyfert";
 import { isTwentyFourSevenEnabled, getChannelIds } from "../utils/db_helper";
 
-const NO_SONG_ADDED_TIMEOUT = 600000; // 1 minute
+const NO_SONG_ADDED_TIMEOUT = 600000; // 10 minutes
 const noSongAddedTimeouts = new Map();
 let eventListenersRegistered = false;
 
@@ -47,7 +47,7 @@ async function rejoinOnDestroy(client, guildId, voiceChannelId, textChannelId) {
             return;
         }
 
-        const voiceChannel = await client.guilds.channels.fetch(guildId, voiceChannelId).catch(() => null);
+        const voiceChannel = await guild.channels.fetch(voiceChannelId).catch(() => null);
         if (!voiceChannel) {
             console.error(`Voice channel ${voiceChannelId} not found or unjoinable in guild ${guildId}`);
             return;
@@ -90,7 +90,6 @@ function clearNoSongAddedTimeout(guildId) {
 async function startNoSongAddedTimeout(client, guildId, player) {
     clearNoSongAddedTimeout(guildId);
 
-
     const timeoutId = setTimeout(async () => {
         try {
             if (isTwentyFourSevenEnabled(guildId)) {
@@ -109,12 +108,11 @@ async function startNoSongAddedTimeout(client, guildId, player) {
                 return;
             }
 
-
             const textChannel = await client.channels.fetch(currentPlayer.textChannel).catch(() => null);
             if (textChannel && textChannel.type === 0) {
                 const embed = new Embed()
                     .setColor(0)
-                    .setDescription("No song added in 3 minutes, disconnecting...\nUse the `/24_7` command to keep the bot in voice channel.")
+                    .setDescription("No song added in 10 minutes, disconnecting...\nUse the `/24_7` command to keep the bot in voice channel.")
                     .setFooter({ text: "Automatically destroying player" });
 
                 const message = await client.messages.write(textChannel.id, { embeds: [embed] }).catch(() => null);
@@ -122,7 +120,6 @@ async function startNoSongAddedTimeout(client, guildId, player) {
                     setTimeout(() => message.delete().catch(() => {}), 10000);
                 }
             }
-
 
             currentPlayer.destroy();
             noSongAddedTimeouts.delete(guildId);
@@ -135,8 +132,8 @@ async function startNoSongAddedTimeout(client, guildId, player) {
     }, NO_SONG_ADDED_TIMEOUT);
 
     noSongAddedTimeouts.set(guildId, timeoutId);
-
 }
+
 export default createEvent({
     data: { name: 'voiceStateUpdate', once: false },
     async run([newState, oldState], client): Promise<void> {
@@ -173,6 +170,5 @@ export default createEvent({
         } else if (player && player.playing) {
             clearNoSongAddedTimeout(guildId);
         }
-    
     }
 });
